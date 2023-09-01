@@ -20,11 +20,10 @@ parts/
 sdist/
 var/
 wheels/
-api_keys/
-old_ideas/
-cache/*
-settings.py
-status.log
+/api_keys/
+/old_ideas/
+/cache/*
+/settings.py
 folder_*
 share/python-wheels/
 *.egg-info/
