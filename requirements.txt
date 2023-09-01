@@ -1,0 +1,3 @@
+parse-torrent-title==2.5
+thefuzz==0.20.0
+urllib3==1.26.8

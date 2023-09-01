@@ -20,6 +20,12 @@ parts/
 sdist/
 var/
 wheels/
+api_keys/
+old_ideas/
+cache/*
+settings.py
+status.log
+folder_*
 share/python-wheels/
 *.egg-info/
 .installed.cfg
