@@ -28,7 +28,7 @@ Drive2CloudSync offers several features to enhance your media organization and a
 Before you can use Drive2CloudSync, you'll need to install Python (version >3.10) and ensure you have the necessary dependencies. Follow these steps to get started:
 1. Clone this repository to your local machine:
     ```sh
-    git clone https://github.com/your-username/Drive2CloudSync.git
+    git clone https://github.com/honest-mule/Drive2CloudSync.git
     ```
 2. Navigate to the project directory:
     ```sh
