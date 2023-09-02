@@ -129,3 +129,20 @@ def get_show_info_from_torrent_name(folder_name: str):
         year = series_guessed_info.get("year", [])[0]
 
     return [title, year, season, episodes]
+
+class Correction:
+    folder_name = None
+    tmdb_id = None
+    type = None
+    done = False
+    def __init__(self, tmdb_id, type, folder_name) -> None:
+        self.tmdb_id = int(tmdb_id)
+        self.type = type
+        self.folder_name = folder_name
+
+__all__ = [
+    "sanitise_title_for_windows_folder_name",
+    "get_movie_info_from_torrent_name",
+    "get_show_info_from_torrent_name",
+    "Correction"
+]

@@ -10,7 +10,7 @@ from rd_api import *
 from cache import Cache
 from tmdb_movies.tmdb import TMDBMovieScraper
 from tmdb_shows.tmdb import search_show, load_show_info
-from utils import sanitise_title_for_windows_folder_name, get_movie_info_from_torrent_name, get_show_info_from_torrent_name
+from utils import *
 import logging
 import traceback
 from thefuzz import fuzz
@@ -252,6 +252,34 @@ def try_folder_resolution(type, folder_name, torrents):
         ex_string = ex_string.replace("\n", "\n\t")
         logger.error(f"{type}\{folder_name} could not be resolved\n\tDetails: {ex_string}")
 
+def manage_corrections(corrections: list[Correction]):
+    global CORRECTIONS_FILE_LOCATION
+    try:
+        if not os.path.isfile(CORRECTIONS_FILE_LOCATION):
+            return
+        _corrections: list[Correction] = []
+        with open(CORRECTIONS_FILE_LOCATION, "r+") as corrections_file:
+            for line in corrections_file.readlines():
+                _values = line.split(",")
+                correction = Correction(tmdb_id=_values[0].strip(),
+                                        type=_values[1].strip(), folder_name=_values[2].strip())
+                omit_correction = False
+                for former_correction in corrections:
+                    if former_correction.folder_name == correction.folder_name and former_correction.done:
+                        omit_correction = True
+                        break
+                if not omit_correction:
+                    _corrections.append(correction)
+            corrections_file.seek(0)
+            corrections_file.truncate()
+            for pending in _corrections:
+                corrections_file.write(f"{pending.tmdb_id},{pending.type},{pending.folder_name}\n")
+            return _corrections
+    except Exception as ex:
+        ex_string = error_string(ex)
+        ex_string = ex_string.replace("\n", "\n\t")
+        logger.error(f"Unable to load corrections\n\tException Info: {ex_string}")
+
 seconds_passed = 0
 SECONDS_IN_A_DAY = 24 * 60 * 60
 
@@ -279,18 +307,33 @@ if __name__ == "__main__":
         }
     ]
 
+    corrections: list[Correction] = []
+    corrections = manage_corrections(corrections)
+    for correction in corrections:
+        if not cache.fix_entry(correction):
+            continue
+        try_folder_resolution(correction.type, correction.folder_name, torrents)
+        correction.done = True
+    corrections = manage_corrections(corrections)
+
     for category in categories_to_resolve:
         category["dirs"] = os.listdir(category["path"])
         for folder_name in category["dirs"]:
             try_folder_resolution(category["type"], folder_name, torrents)
     
-    once_a_day_run_complete = True
-
     sleep(5 * 60)
     seconds_passed = 5 * 60
 
     while True:
         torrents = get_torrents()
+        
+        corrections = manage_corrections(corrections)
+        for correction in corrections:
+            if not cache.fix_entry(correction):
+                continue
+            try_folder_resolution(correction.type, correction.folder_name, torrents)
+            correction.done = True
+        corrections = manage_corrections(corrections)
 
         if seconds_passed > SECONDS_IN_A_DAY and datetime.datetime.now().hour() > RENEW_ALL_LINKS_AT:
             for category in categories_to_resolve:

@@ -2,6 +2,7 @@ from os import environ as os_environ
 
 SOURCE_DRIVE = "D:"                 # Source toggle_RD drive path
 DEST_ROOT = "E:\\Kodi"              # Destination cloud drive path
+CORRECTIONS_FILE_LOCATION = r""     # corrections.csv file containing correct TMDB ID, movie/tv type and rcloneRD folder name
 FOLDER_CHECK_FREQUENCY = 2 * 60     # Frequency in seconds
 RENEW_ALL_LINKS_AT = 4              # Daily hour when all links are renewed - 24 hours
 _RD_API_KEY = ''                    # Real-debrid API Key

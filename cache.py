@@ -1,5 +1,6 @@
 import sqlite3
 from sqlite3 import Error
+from utils import Correction
 
 class TorrentCacheObject():
     torrent_id = None
@@ -83,5 +84,20 @@ class Cache():
             c = self.conn.cursor()
             c.execute("UPDATE torrents SET dest_folder=? WHERE id=?", (dest_folder, torrent_id))
             self.conn.commit()
+        except Error as e:
+            print(e)
+
+    def fix_entry(self, correction: Correction):
+        try:
+            c = self.conn.cursor()
+            c.execute("SELECT id FROM torrents WHERE folder=?", (correction.folder_name,))
+            torrent_id = c.fetchone()
+            if not torrent_id:
+                return False
+            torrent_id = torrent_id[0]
+            c.execute("UPDATE list SET type=?,tmdb_id=? WHERE torrent_id=?", (correction.type, correction.tmdb_id, torrent_id))
+            c.execute("UPDATE torrents SET folder=?,dest_folder=NULL WHERE id=?", (correction.folder_name, torrent_id))
+            self.conn.commit()
+            return True
         except Error as e:
             print(e)
