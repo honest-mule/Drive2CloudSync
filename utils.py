@@ -110,13 +110,13 @@ def get_show_info_from_torrent_name(folder_name: str):
 
     series_guessed_info = PTN.parse(folder_name, standardise=True, coherent_types=True)
 
-    if "title" not in series_guessed_info:
+    if "title" not in series_guessed_info or series_guessed_info["title"] == "" :
         title = folder_name
     else:
         title = series_guessed_info["title"]
 
     if "season" not in series_guessed_info:
-        season = 1
+        pass
     else:
         season = series_guessed_info.get("season", [1])[0]
 

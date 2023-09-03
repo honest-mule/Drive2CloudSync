@@ -106,7 +106,14 @@ def movies(folder_name, torrents, tmdb_info = None):
 
         strm_dirs = file_info['path'].split("/")[1:]
         strm_file_name = strm_dirs.pop()
-        strm_path = Path(new_folder_path, *strm_dirs, f"{strm_file_name}.strm")
+        if len(strm_dirs) > 0:
+            for idx, _dir in enumerate(strm_dirs):
+                if re.search("^(featurettes|extras)", _dir, re.RegexFlag.IGNORECASE):
+                    strm_dirs = strm_dirs[idx+1:]
+                    break
+            strm_path = Path(new_folder_path, "Extras", *strm_dirs, f"{strm_file_name}.strm")
+        else:
+            strm_path = Path(new_folder_path, f"{strm_file_name}.strm")
         strm_path.parent.mkdir(parents=True, exist_ok=True)
 
         if os.path.isfile(strm_path):
@@ -135,14 +142,13 @@ def shows(folder_name, torrents, tmdb_info = None):
     if torrent["status"] != "downloaded":
         return
     
+    [title, year, season_number_in_root, _] = get_show_info_from_torrent_name(folder_name)
     new_folder_name = cache.get_dest_folder(torrent["id"])
-
-    og_season = 1
-    if not new_folder_name or new_folder_name:
+    
+    if not new_folder_name:
         if not tmdb_info:
             cache_record = cache.fetch(torrent["id"])
             if not cache_record:
-                [title, year, og_season, _] = get_show_info_from_torrent_name(folder_name)
                 tmdb_info = search_show(title, year)
                 if len(tmdb_info) == 0:
                     logger.warning(f"Skipping shows\{folder_name} since TMDB returned 0 results")
@@ -180,29 +186,54 @@ def shows(folder_name, torrents, tmdb_info = None):
             continue
 
         ep_counter = ep_counter + 1
-        strm_dirs = file_info['path'].split("/")[1:]
+        strm_dirs: list = file_info['path'].split("/")[1:]
         strm_file_name: str = strm_dirs.pop()
         [_x, _y, season, episodes] = get_show_info_from_torrent_name(strm_file_name)
 
-        if not season and not og_season:
+        if not season:
+            for _dir in reversed(strm_dirs):
+                [_x, _y, _season, _z] = get_show_info_from_torrent_name(_dir)
+                if _season:
+                    season = _season
+                    break
+
+        # Since no season info could be found for the TV show -
+        # we'll assume the content belongs to Season 1
+        if not season and not season_number_in_root:
             season = 1
-        elif not season and og_season:
-            season = og_season
+        elif not season:
+            season = season_number_in_root
 
-        strm_path = os.path.join(new_folder_path, f"Season {season}", f"{new_folder_name} S{season:02d}")
-
-        if len(episodes) > 0:
+        if any(re.search("^featurettes|extras$", _dir, re.RegexFlag.IGNORECASE) for _dir in strm_dirs):
+            strm_path = Path(new_folder_path, f"Season {season}", "Extras", f"{strm_file_name}.strm")
+        elif len(episodes) > 0:
+            if any(re.search("^specials$", _dir, re.RegexFlag.IGNORECASE) for _dir in strm_dirs):
+                strm_path = os.path.join(new_folder_path, "Season 00", f"{new_folder_name} S00")
+            else:
+                strm_path = os.path.join(new_folder_path, f"Season {season}", f"{new_folder_name} S{season:02d}")
             for ep_no in episodes:
                 strm_path = f"{strm_path}E{ep_no:02d}"
             strm_path = Path(f"{strm_path}.strm")
         else:
-            episode_number = re.search(r"(\d+)", strm_file_name)
-            if episode_number:
-                episode_number = int(episode_number.groups()[0])
-                strm_path = f"{strm_path}E{episode_number:02d}"
-                strm_path = Path(f"{strm_path}.strm")
+            # Possible strategy when episode names are without E** formatting
+            # episode_number = re.search(r"(\d+)", strm_file_name)
+            # if episode_number:
+            #     episode_number = int(episode_number.groups()[0])
+            #     strm_path = f"{strm_path}E{episode_number:02d}"
+            #     strm_path = Path(f"{strm_path}.strm")
+            # else:
+            if len(strm_dirs) > 0:
+                if any(re.search("^specials$", _dir, re.RegexFlag.IGNORECASE) for _dir in strm_dirs):
+                    strm_path = Path(new_folder_path, f"Season 00", f"{strm_file_name}.strm")
+                else:    
+                    for idx, _dir in enumerate(strm_dirs):
+                        if re.search("^(season|series|featurettes|extras)", _dir, re.RegexFlag.IGNORECASE):
+                            strm_dirs = strm_dirs[idx+1:]
+                            break
+                    strm_path = Path(new_folder_path, f"Season {season}", "Extras", *strm_dirs, f"{strm_file_name}.strm")
             else:
-                strm_path = Path(new_folder_path, *strm_dirs, f"{strm_file_name}.strm")
+                # Here we're assuming the file is possibly a badly marked episode
+                strm_path = Path(new_folder_path, f"Season {season}", f"{strm_file_name}.strm")
 
         strm_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -240,6 +271,9 @@ def error_string(ex: Exception) -> str:
     ])
     
 def try_folder_resolution(type, folder_name, torrents):
+    if not torrents:
+        logger.error("Empty torrents list. Check internet connection or RD API key.")
+        return
     try:
         if type == 'movie':
             movies(folder_name, torrents)

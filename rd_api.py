@@ -11,12 +11,15 @@ def get_torrents():
     torrents = []
     page = 1
     url = base_uri + f"/torrents?page={page}&limit=2500"
-    res = requests.get(url, headers=headers)
-    while(res.status_code == 200):
-        torrents = torrents + res.json()
-        page = page + 1
-        url = base_uri + f"/torrents?page={page}&limit=2500"
+    try:
         res = requests.get(url, headers=headers)
+        while(res.status_code == 200):
+            torrents = torrents + res.json()
+            page = page + 1
+            url = base_uri + f"/torrents?page={page}&limit=2500"
+            res = requests.get(url, headers=headers)
+    except:
+        pass
     return torrents
 
 def get_torrent_info(torrent_id):
