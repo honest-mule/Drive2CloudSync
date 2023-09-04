@@ -288,10 +288,10 @@ def try_folder_resolution(type, folder_name, torrents):
 
 def manage_corrections(corrections: list[Correction]):
     global CORRECTIONS_FILE_LOCATION
+    _corrections: list[Correction] = []
     try:
         if not os.path.isfile(CORRECTIONS_FILE_LOCATION):
-            return
-        _corrections: list[Correction] = []
+            return _corrections
         with open(CORRECTIONS_FILE_LOCATION, "r+") as corrections_file:
             for line in corrections_file.readlines():
                 _values = line.split(",")
@@ -308,11 +308,12 @@ def manage_corrections(corrections: list[Correction]):
             corrections_file.truncate()
             for pending in _corrections:
                 corrections_file.write(f"{pending.tmdb_id},{pending.type},{pending.folder_name}\n")
-            return _corrections
     except Exception as ex:
         ex_string = error_string(ex)
         ex_string = ex_string.replace("\n", "\n\t")
         logger.error(f"Unable to load corrections\n\tException Info: {ex_string}")
+    finally:
+        return _corrections
 
 seconds_passed = 0
 SECONDS_IN_A_DAY = 24 * 60 * 60
