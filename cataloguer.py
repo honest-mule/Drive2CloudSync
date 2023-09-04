@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # define file handler and set formatter
-file_handler = logging.FileHandler('status.log')
-formatter    = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
+file_handler = logging.FileHandler('status.log', "a+", "utf-8")
+formatter    = logging.Formatter(u'%(asctime)s : %(levelname)s : %(name)s : %(message)s')
 file_handler.setFormatter(formatter)
 
 # add file handler to logger
@@ -82,7 +82,7 @@ def movies(folder_name, torrents, tmdb_info = None):
                         if sim_ratio > max_similarity_ratio:
                             max_similarity_ratio = sim_ratio
                             _tmdb_info = _mv_info
-                    tmdb_info = _tmdb_info
+                    tmdb_info = _tmdb_info if _tmdb_info else tmdb_info[0]
                     logger.info(f"Found best match for {folder_name} -\n\tTMDB_ID: {tmdb_info['id']}\n\tTitle: {tmdb_info['title']}\n\tOG title: {tmdb_info['original_title']}")
                 cache.save(torrent["id"], "movie", tmdb_info["id"], folder_name)
                 cache_record = cache.fetch(torrent["id"])
