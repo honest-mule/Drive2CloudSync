@@ -126,7 +126,10 @@ def movies(folder_name, torrents, tmdb_info = None):
             strm_path = Path(new_folder_path, f"{strm_file_name}.strm")
         strm_path.parent.mkdir(parents=True, exist_ok=True)
 
-        os.remove(strm_path)
+        try:
+            os.remove(strm_path)
+        except:
+            pass
         with open(strm_path, "w") as strm_file:
             strm_file.write(direct_link)
         logger.info(f"Created:\n\tStream path: {strm_path}\n\tDirect link: {direct_link}")
@@ -255,7 +258,10 @@ def shows(folder_name, torrent = None, tmdb_info = None):
 
         strm_path.parent.mkdir(parents=True, exist_ok=True)
         
-        os.remove(strm_path)
+        try:
+            os.remove(strm_path)
+        except:
+            pass
         with open(strm_path, "w") as strm_file:
             strm_file.write(direct_link)
         logger.info(f"Created:\n\tStream path: {strm_path}\n\tDirect link: {direct_link}")
@@ -413,8 +419,8 @@ if __name__ == "__main__":
 
     for category in categories_to_resolve:
         category["dirs"] = os.listdir(category["path"])
-        for folder_name in category["dirs"]:
-            try_folder_resolution(category["type"], folder_name, torrents)
+        # for folder_name in category["dirs"]:
+        #     try_folder_resolution(category["type"], folder_name, torrents)
     
     sleep(5 * 60)
     seconds_passed = 5 * 60
@@ -438,12 +444,10 @@ if __name__ == "__main__":
             seconds_passed = 0
         else:
             for category in categories_to_resolve:
-                _folders_list = [_dir for _dir in os.listdir(category["path"]) if _dir not in category(["dirs"])]
-                if len(_folders_list) > len(category["dirs"]):
-                    new_dirs = [x for x in _folders_list if x not in category["dirs"]]
-                    for folder_name in new_dirs:
-                        try_folder_resolution(category["type"], folder_name, torrents)
-                category["dirs"] = category["dirs"] + _folders_list
+                new_dirs = [_dir for _dir in os.listdir(category["path"]) if _dir not in category["dirs"]]
+                for folder_name in new_dirs:
+                    try_folder_resolution(category["type"], folder_name, torrents)
+                category["dirs"] = category["dirs"] + new_dirs
         
         sleep(FOLDER_CHECK_FREQUENCY)
         seconds_passed = seconds_passed + FOLDER_CHECK_FREQUENCY
