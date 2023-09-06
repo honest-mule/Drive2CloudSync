@@ -412,7 +412,7 @@ if __name__ == "__main__":
     corrections = manage_corrections(corrections)
     for correction in corrections:
         if not cache.fix_entry(correction):
-            continue
+            cache.save(torrents[correction.folder_name]["id"], correction.type, correction.tmdb_id, correction.folder_name)
         try_folder_resolution(correction.type, correction.folder_name, torrents)
         correction.done = True
     corrections = manage_corrections(corrections)
@@ -431,7 +431,7 @@ if __name__ == "__main__":
         corrections = manage_corrections(corrections)
         for correction in corrections:
             if not cache.fix_entry(correction):
-                continue
+                cache.save(torrents["id"], correction.type, correction.tmdb_id, correction.folder_name)
             try_folder_resolution(correction.type, correction.folder_name, torrents)
             correction.done = True
         corrections = manage_corrections(corrections)
