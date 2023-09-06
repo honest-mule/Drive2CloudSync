@@ -13,17 +13,19 @@ class TorrentCacheObject():
 
 class Cache():
     conn = None
+    logger = None
 
-    def __init__(self) -> None:
+    def __init__(self, logger = None) -> None:
         self.create_connection(r".\cache\managed_list.db")
         self.create_table()
+        self.logger = logger
 
     def create_connection(self, db_file):
         """ create a database connection to a SQLite database """
         try:
             self.conn = sqlite3.connect(db_file)
         except Error as e:
-            print(e)
+            self.__log_error(e)
 
     def create_table(self):
         try:
@@ -32,7 +34,7 @@ class Cache():
                 sql = sql_file.read()
                 c.executescript(sql)
         except Error as e:
-            print(e)
+            self.__log_error(e)
 
     def save(self, torrent_id, type, tmdb_id, folder_name):
         try:
@@ -41,7 +43,7 @@ class Cache():
             c.execute("INSERT OR IGNORE INTO torrents (id, folder) VALUES (?,?)", (torrent_id, folder_name))
             self.conn.commit()
         except Error as e:
-            print(e)
+            self.__log_error(e)
 
     def fetch(self, torrent_id):
         try:
@@ -53,7 +55,7 @@ class Cache():
             else:
                 return None
         except Error as e:
-            print(e)
+            self.__log_error(e)
 
     def get_torrent_id(self, folder_name):
         try:
@@ -65,7 +67,7 @@ class Cache():
             else:
                 return None
         except Error as e:
-            print(e)
+            self.__log_error(e)
 
     def get_dest_folder(self, torrent_id):
         try:
@@ -77,7 +79,19 @@ class Cache():
             else:
                 return None
         except Error as e:
-            print(e)
+            self.__log_error(e)
+
+    def get_dest_folder2(self, folder_name):
+        try:
+            c = self.conn.cursor()
+            c.execute("SELECT dest_folder FROM torrents WHERE folder=?", (folder_name,))
+            result = c.fetchone()
+            if result:
+                return result[0]
+            else:
+                return None
+        except Error as e:
+            self.__log_error(e)
 
     def save_dest_folder(self, torrent_id, dest_folder):
         try:
@@ -85,7 +99,19 @@ class Cache():
             c.execute("UPDATE torrents SET dest_folder=? WHERE id=?", (dest_folder, torrent_id))
             self.conn.commit()
         except Error as e:
-            print(e)
+            self.__log_error(e)
+    
+    def update_torrent_id(self, torrent_id, folder_name):
+        try:
+            c = self.conn.cursor()
+            old_torrent_id = self.get_torrent_id(folder_name)
+            if not old_torrent_id:
+                return False
+            c.execute("UPDATE list SET torrent_id=? WHERE torrent_id=?", (old_torrent_id, torrent_id))
+            c.execute("UPDATE torrents SET torrent_id=? WHERE torrent_id=?", (old_torrent_id, torrent_id))
+            self.conn.commit()
+        except Error as e:
+            self.__log_error(e)
 
     def fix_entry(self, correction: Correction):
         try:
@@ -100,4 +126,10 @@ class Cache():
             self.conn.commit()
             return True
         except Error as e:
+            self.__log_error(e)
+
+    def __log_error(self, e):
+        if self.logger:
+            self.logger.error(f"DB issue: {e}")
+        else:
             print(e)

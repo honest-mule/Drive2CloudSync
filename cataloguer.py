@@ -36,31 +36,35 @@ logger.addHandler(file_handler)
 
 # --- LOGGING SETUP END --- #
 
-cache = Cache()
+cache = Cache(logger)
 movie_scraper = TMDBMovieScraper(None, None, None)
 
 SEVEN_DAYS = 7 * 24 * 60 * 60
 
 def movies(folder_name, torrents, tmdb_info = None):
     torrent = None
-    if isinstance(torrents, list):
-        for _t in torrents:
-            if _t["filename"] != folder_name:
-                continue
-            torrent = _t
-            break
-    else:
-        torrent = torrents
+    if isinstance(torrents, dict):
+        if "id" in torrents:
+            torrent = torrents
+        elif folder_name in torrents:
+            torrent = torrents[folder_name]
     if not torrent:
         torrent_id = cache.get_torrent_id(folder_name)
         if not torrent_id:
             logger.warning(f"Skipping movies\{folder_name} since respective torrent_id could not be found")
             return
         torrent = get_torrent_info(torrent_id)
+        if not torrent:
+            logger.warning(f"Skipping movies\{folder_name} since Real-Debrid API returned without relevant torrent info")
+            return
     if torrent["status"] != "downloaded":
         return
     
     new_folder_name = cache.get_dest_folder(torrent["id"])
+    if not new_folder_name:
+        new_folder_name = cache.get_dest_folder2(folder_name)
+        if new_folder_name:
+            cache.update_torrent_id(torrent["id"])
 
     if not new_folder_name:
         if not tmdb_info:
@@ -96,7 +100,13 @@ def movies(folder_name, torrents, tmdb_info = None):
     new_folder_path = os.path.join(os.sep, DEST_ROOT + os.sep, "movies", new_folder_name)
     os.makedirs(new_folder_path, exist_ok=True)
 
-    torrent_info = get_torrent_info(torrent['id'])
+    if "files" in torrent:
+        torrent_info = torrent
+    else:
+        torrent_info = get_torrent_info(torrent["id"])
+        if not torrent_info:
+            logger.warning(f"Skipping movies\{folder_name} since Real-Debrid API returned without relevant torrent info")
+            return
     selected_files = [x for x in torrent_info['files'] if x['selected']]
     for file_info, file_uri in zip(selected_files, torrent_info['links']):
         direct_link = get_direct_link(file_uri)
@@ -116,34 +126,36 @@ def movies(folder_name, torrents, tmdb_info = None):
             strm_path = Path(new_folder_path, f"{strm_file_name}.strm")
         strm_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if os.path.isfile(strm_path):
-            last_modified = os.path.getmtime(strm_path)
-            if time() < last_modified + SEVEN_DAYS:
-                continue
+        os.remove(strm_path)
         with open(strm_path, "w") as strm_file:
             strm_file.write(direct_link)
+        logger.info(f"Created:\n\tStream path: {strm_path}\n\tDirect link: {direct_link}")
 
-def shows(folder_name, torrents, tmdb_info = None):
+def shows(folder_name, torrent = None, tmdb_info = None):
     torrent = None
-    if isinstance(torrents, list):
-        for _t in torrents:
-            if _t["filename"] != folder_name:
-                continue
-            torrent = _t
-            break
-    else:
-        torrent = torrents
+    if isinstance(torrents, dict):
+        if "id" in torrents:
+            torrent = torrents
+        elif folder_name in torrents:
+            torrent = torrents[folder_name]
     if not torrent:
         torrent_id = cache.get_torrent_id(folder_name)
         if not torrent_id:
             logger.warning(f"Skipping shows\{folder_name} since respective torrent_id could not be found")
             return
         torrent = get_torrent_info(torrent_id)
+        if not torrent:
+            logger.warning(f"Skipping movies\{folder_name} since Real-Debrid API returned without relevant torrent info")
+            return
     if torrent["status"] != "downloaded":
         return
     
     [title, year, season_number_in_root, _] = get_show_info_from_torrent_name(folder_name)
     new_folder_name = cache.get_dest_folder(torrent["id"])
+    if not new_folder_name:
+        new_folder_name = cache.get_dest_folder2(folder_name)
+        if new_folder_name:
+            cache.update_torrent_id(torrent["id"])
     
     if not new_folder_name:
         if not tmdb_info:
@@ -176,7 +188,13 @@ def shows(folder_name, torrents, tmdb_info = None):
     new_folder_path = os.path.join(os.sep, DEST_ROOT + os.sep, "shows", new_folder_name)
     os.makedirs(new_folder_path, exist_ok=True)
 
-    torrent_info = get_torrent_info(torrent['id'])
+    if "files" in torrent:
+        torrent_info = torrent
+    else:
+        torrent_info = get_torrent_info(torrent['id'])
+        if not torrent_info:
+            logger.warning(f"Skipping movies\{folder_name} since Real-Debrid API returned without relevant torrent info")
+            return
     selected_files = [x for x in torrent_info['files'] if x['selected']]
     ep_counter = 0
     for file_info, file_uri in zip(selected_files, torrent_info['links']):
@@ -236,33 +254,74 @@ def shows(folder_name, torrents, tmdb_info = None):
                 strm_path = Path(new_folder_path, f"Season {season}", f"{strm_file_name}.strm")
 
         strm_path.parent.mkdir(parents=True, exist_ok=True)
-
-        if os.path.isfile(strm_path):
-            last_modified = os.path.getmtime(strm_path)
-            if time() < last_modified + SEVEN_DAYS:
-                continue
+        
+        os.remove(strm_path)
         with open(strm_path, "w") as strm_file:
             strm_file.write(direct_link)
+        logger.info(f"Created:\n\tStream path: {strm_path}\n\tDirect link: {direct_link}")
 
-def unknown(folder_name, torrents):
+def unknown(folder_name: str, torrents = None):
     torrent = None
-    for _t in torrents:
-        if _t["filename"] != folder_name:   
-            continue
-        torrent = _t
-        break
-    if torrent["status"] != "downloaded":
-        return
-    if not torrent:
-        logger.warning(f"Skipping default\{folder_name} since respective torrent_id could not be found")
+    if isinstance(torrents, dict):
+        if "id" in torrents:
+            torrent = torrents
+        elif folder_name in torrents:
+            torrent = torrents[folder_name]
+        else:
+            logger.warning("Skipping default\{folder_name} since its respective torrent couldn't be found.")
+            return False
     cache_record = cache.fetch(torrent["id"])
     if not cache_record:
-        logger.warning(f"Skipping default\{folder_name} since it's an unknown entity")
-        return
+        _tmp = cache.get_torrent_id(folder_name)
+        if _tmp:
+            cache.update_torrent_id(torrent["id"], folder_name)
+            cache_record = cache.fetch(torrent["id"])
+        else:
+            logger.warning(f"Skipping default\{folder_name} since its an unknown entity")
+            return
     if cache_record.type == "movie":
         return movies(folder_name, torrent)
     elif cache_record.type == "tv":
         return shows(folder_name, torrent)
+    
+def write_strm_file(strm_path: str, direct_link: str):
+    try:
+        # Open the file in 'r+' mode, which allows both reading and writing
+        with open(strm_path, 'r+') as file:
+            old_link = file.read().strip()
+            
+            # Check if the existing contents match the new contents
+            if old_link != direct_link:
+                # Contents don't match, so update the file
+                file.seek(0)  # Move the file pointer to the beginning
+                file.write(direct_link)  # Overwrite the existing contents
+                file.truncate()  # Truncate any extra characters if the new contents are shorter
+                logger.info(f"Updated:\n\tStream path:{strm_path}\n\tDirect link:{direct_link}")
+            else:
+                pass
+    except FileNotFoundError:
+        # The file doesn't exist, so create it with the new contents
+        with open(strm_path, 'w') as file:
+            file.write(direct_link)
+        logger.info(f"Created:\n\tStream path:{strm_path}\n\tDirect link:{direct_link}")
+    
+def sort_torrents(torrents):
+    _dict = {}
+    for torrent in torrents:
+        if torrent["filename"] in _dict or torrent["status"] != "downloaded":
+            continue
+        _dict[torrent["filename"]] = torrent
+    return _dict
+    
+def resolve_media_type(folder_name):
+    tv_regex = re.compile(r"[\W](S[0-9]{2}|SEASON|COMPLETE|[^457a-z\W\s]-[0-9]+)", re.RegexFlag.IGNORECASE)
+    movie_regex = re.compile(r"(19|20)([0-9]{2} ?\.?)")
+    if tv_regex.search(folder_name):
+        return "tv"
+    if movie_regex.search(folder_name):
+        return "movie"
+    
+    return "unknown"
     
 def error_string(ex: Exception) -> str:
     return '\n'.join([
@@ -319,7 +378,8 @@ seconds_passed = 0
 SECONDS_IN_A_DAY = 24 * 60 * 60
 
 if __name__ == "__main__":
-    torrents = get_torrents()
+    torrents = sort_torrents(get_torrents())
+
     movies_path = os.path.join(os.sep, SOURCE_DRIVE + os.sep, "movies")
     shows_path = os.path.join(os.sep, SOURCE_DRIVE + os.sep, "shows")
     uncategorized_path = os.path.join(os.sep, SOURCE_DRIVE + os.sep, "default")
@@ -360,7 +420,7 @@ if __name__ == "__main__":
     seconds_passed = 5 * 60
 
     while True:
-        torrents = get_torrents()
+        torrents = sort_torrents(get_torrents())
         
         corrections = manage_corrections(corrections)
         for correction in corrections:
@@ -378,12 +438,12 @@ if __name__ == "__main__":
             seconds_passed = 0
         else:
             for category in categories_to_resolve:
-                _folders_list = os.listdir(category["path"])
+                _folders_list = [_dir for _dir in os.listdir(category["path"]) if _dir not in category(["dirs"])]
                 if len(_folders_list) > len(category["dirs"]):
                     new_dirs = [x for x in _folders_list if x not in category["dirs"]]
                     for folder_name in new_dirs:
                         try_folder_resolution(category["type"], folder_name, torrents)
-                category["dirs"] = _folders_list
+                category["dirs"] = category["dirs"] + _folders_list
         
         sleep(FOLDER_CHECK_FREQUENCY)
         seconds_passed = seconds_passed + FOLDER_CHECK_FREQUENCY
