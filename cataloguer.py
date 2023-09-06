@@ -419,8 +419,8 @@ if __name__ == "__main__":
 
     for category in categories_to_resolve:
         category["dirs"] = os.listdir(category["path"])
-        # for folder_name in category["dirs"]:
-        #     try_folder_resolution(category["type"], folder_name, torrents)
+        for folder_name in category["dirs"]:
+            try_folder_resolution(category["type"], folder_name, torrents)
     
     sleep(5 * 60)
     seconds_passed = 5 * 60
