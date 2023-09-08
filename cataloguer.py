@@ -6,6 +6,7 @@ import re
 from time import time, sleep
 from pathlib import Path
 import datetime
+from dateutil import parser as dt_parser
 from rd_api import *
 from cache import Cache
 from tmdb_movies.tmdb import TMDBMovieScraper
@@ -14,6 +15,7 @@ from utils import *
 import logging
 import traceback
 from thefuzz import fuzz
+import argparse
 
 
 # --- LOGGING SETUP START --- #
@@ -109,7 +111,11 @@ def movies(folder_name, torrents, tmdb_info = None):
             return
     selected_files = [x for x in torrent_info['files'] if x['selected']]
     for file_info, file_uri in zip(selected_files, torrent_info['links']):
-        direct_link = get_direct_link(file_uri)
+        if file_uri in torrent["direct_links"]:
+            direct_link = torrent["direct_links"][file_uri]["download"]
+        else:
+            direct_link = get_direct_link(file_uri)
+            logger.info(f"Direct link generated:\n\tTorrent: {torrent_info['filename']}\n\tPath: {file_info['path']}\n\tLink: {direct_link}")
         if(direct_link.endswith(".rar")):
             logger.warning(f"RD sent .rar for {torrent_info['filename']}{file_info['path']}")
             continue
@@ -132,7 +138,7 @@ def movies(folder_name, torrents, tmdb_info = None):
             pass
         with open(strm_path, "w") as strm_file:
             strm_file.write(direct_link)
-        logger.info(f"Created:\n\tStream path: {strm_path}\n\tDirect link: {direct_link}")
+        logger.debug(f"Created:\n\tStream path: {strm_path}\n\tDirect link: {direct_link}")
 
 def shows(folder_name, torrent = None, tmdb_info = None):
     torrent = None
@@ -201,7 +207,11 @@ def shows(folder_name, torrent = None, tmdb_info = None):
     selected_files = [x for x in torrent_info['files'] if x['selected']]
     ep_counter = 0
     for file_info, file_uri in zip(selected_files, torrent_info['links']):
-        direct_link = get_direct_link(file_uri)
+        if file_uri in torrent["direct_links"]:
+            direct_link = torrent["direct_links"][file_uri]["download"]
+        else:
+            direct_link = get_direct_link(file_uri)
+            logger.info(f"Direct link generated:\n\tTorrent: {torrent_info['filename']}\n\tPath: {file_info['path']}\n\tLink: {direct_link}")
         if(direct_link.endswith(".rar")):
             logger.warning(f"RD sent .rar for {torrent_info['filename']}{file_info['path']}")
             continue
@@ -264,7 +274,7 @@ def shows(folder_name, torrent = None, tmdb_info = None):
             pass
         with open(strm_path, "w") as strm_file:
             strm_file.write(direct_link)
-        logger.info(f"Created:\n\tStream path: {strm_path}\n\tDirect link: {direct_link}")
+        logger.debug(f"Created:\n\tStream path: {strm_path}\n\tDirect link: {direct_link}")
 
 def unknown(folder_name: str, torrents = None):
     torrent = None
@@ -274,7 +284,7 @@ def unknown(folder_name: str, torrents = None):
         elif folder_name in torrents:
             torrent = torrents[folder_name]
         else:
-            logger.warning("Skipping default\{folder_name} since its respective torrent couldn't be found.")
+            logger.warning(f"Skipping default\{folder_name} since its respective torrent couldn't be found.")
             return False
     cache_record = cache.fetch(torrent["id"])
     if not cache_record:
@@ -302,23 +312,37 @@ def write_strm_file(strm_path: str, direct_link: str):
                 file.seek(0)  # Move the file pointer to the beginning
                 file.write(direct_link)  # Overwrite the existing contents
                 file.truncate()  # Truncate any extra characters if the new contents are shorter
-                logger.info(f"Updated:\n\tStream path:{strm_path}\n\tDirect link:{direct_link}")
+                logger.debug(f"Updated:\n\tStream path:{strm_path}\n\tDirect link:{direct_link}")
             else:
                 pass
     except FileNotFoundError:
         # The file doesn't exist, so create it with the new contents
         with open(strm_path, 'w') as file:
             file.write(direct_link)
-        logger.info(f"Created:\n\tStream path:{strm_path}\n\tDirect link:{direct_link}")
+        logger.debug(f"Created:\n\tStream path:{strm_path}\n\tDirect link:{direct_link}")
+
+def is_expired(json_date):
+    try:
+        # Parse the JSON-formatted date string into a datetime object
+        date_obj = dt_parser.parse(json_date)
+        
+        # Get the current datetime
+        current_datetime = datetime.datetime.utcnow()
+        
+        # Compare the parsed date with the current datetime
+        return date_obj.timestamp() + SEVEN_DAYS < current_datetime.timestamp()
+    except ValueError:
+        # Handle invalid date format
+        return False
     
-def sort_torrents(torrents):
-    _dict = {}
-    for torrent in torrents:
-        if torrent["filename"] in _dict or torrent["status"] != "downloaded":
-            continue
-        _dict[torrent["filename"]] = torrent
+def sort_downloads(downloads = [], _dict = {}):
+    for download_info in downloads:
+        _dict[download_info["link"]] = download_info
+    for link in _dict:
+        if is_expired(_dict[link]["generated"]):
+            del _dict[link]
     return _dict
-    
+
 def resolve_media_type(folder_name):
     tv_regex = re.compile(r"[\W](S[0-9]{2}|SEASON|COMPLETE|[^457a-z\W\s]-[0-9]+)", re.RegexFlag.IGNORECASE)
     movie_regex = re.compile(r"(19|20)([0-9]{2} ?\.?)")
@@ -328,6 +352,20 @@ def resolve_media_type(folder_name):
         return "movie"
     
     return "unknown"
+    
+def sort_torrents(torrents, downloads, _dict = {}):
+    for torrent in torrents:
+        torrent["direct_links"] = {}
+        if torrent["filename"] in _dict or torrent["status"] != "downloaded":
+            continue
+        for link in torrent["links"]:
+            if link not in downloads:
+                continue
+            torrent["direct_links"][link] = downloads[link]
+        torrent["type"] = resolve_media_type(torrent["filename"])
+        _dict[torrent["filename"]] = torrent
+    return _dict
+
     
 def error_string(ex: Exception) -> str:
     return '\n'.join([
@@ -384,26 +422,33 @@ seconds_passed = 0
 SECONDS_IN_A_DAY = 24 * 60 * 60
 
 if __name__ == "__main__":
-    torrents = sort_torrents(get_torrents())
+    parser = argparse.ArgumentParser(description="Debrid Media Organizer v1.2")
+    parser.add_argument('--skip-media-reset', action='store_true', required=False,
+                        help="If you're re-rerunning the script multiple times a day then choose this option.")
+    args = parser.parse_args()
 
-    movies_path = os.path.join(os.sep, SOURCE_DRIVE + os.sep, "movies")
-    shows_path = os.path.join(os.sep, SOURCE_DRIVE + os.sep, "shows")
-    uncategorized_path = os.path.join(os.sep, SOURCE_DRIVE + os.sep, "default")
+    downloads = sort_downloads(get_downloads())
+    torrents = sort_torrents(get_torrents(), downloads)
+
+    # Legacy
+    # movies_path = os.path.join(os.sep, SOURCE_DRIVE + os.sep, "movies")
+    # shows_path = os.path.join(os.sep, SOURCE_DRIVE + os.sep, "shows")
+    # uncategorized_path = os.path.join(os.sep, SOURCE_DRIVE + os.sep, "default")
 
     categories_to_resolve = [
         {
             "type": "movie",
-            "path": movies_path,
+            # "path": movies_path,
             "dirs": []
         },
         {
             "type": "show",
-            "path": shows_path,
+            # "path": shows_path,
             "dirs": []
         },
         {
             "type": "unknown",
-            "path": uncategorized_path,
+            # "path": uncategorized_path,
             "dirs": []
         }
     ]
@@ -411,43 +456,53 @@ if __name__ == "__main__":
     corrections: list[Correction] = []
     corrections = manage_corrections(corrections)
     for correction in corrections:
+        torrents[correction.folder_name]["type"] = correction.type
         if not cache.fix_entry(correction):
-            cache.save(torrents[correction.folder_name]["id"], correction.type, correction.tmdb_id, correction.folder_name)
-        try_folder_resolution(correction.type, correction.folder_name, torrents)
+            try:
+                cache.save(torrents[correction.folder_name]["id"], correction.type, correction.tmdb_id, correction.folder_name)
+            except:
+                continue
+        try_folder_resolution(correction.type, correction.folder_name, torrents[correction.folder_name])
         correction.done = True
     corrections = manage_corrections(corrections)
 
-    for category in categories_to_resolve:
-        category["dirs"] = os.listdir(category["path"])
-        for folder_name in category["dirs"]:
-            try_folder_resolution(category["type"], folder_name, torrents)
     
-    sleep(5 * 60)
-    seconds_passed = 5 * 60
+    if not args.skip_media_reset:
+        for folder_name in torrents:
+            try_folder_resolution(torrents[folder_name]["type"], folder_name, torrents[folder_name])
+        sleep(5 * 60)
+        seconds_passed = 5 * 60
 
     while True:
-        torrents = sort_torrents(get_torrents())
-        
+
         corrections = manage_corrections(corrections)
         for correction in corrections:
+            torrents[correction.folder_name]["type"] = correction.type
             if not cache.fix_entry(correction):
-                cache.save(torrents["id"], correction.type, correction.tmdb_id, correction.folder_name)
-            try_folder_resolution(correction.type, correction.folder_name, torrents)
+                try:
+                    cache.save(torrents[correction.folder_name]["id"], correction.type, correction.tmdb_id, correction.folder_name)
+                except:
+                    continue
+            try_folder_resolution(correction.type, correction.folder_name, torrents[correction.folder_name])
             correction.done = True
         corrections = manage_corrections(corrections)
 
-        if seconds_passed > SECONDS_IN_A_DAY and datetime.datetime.now().hour() > RENEW_ALL_LINKS_AT:
-            for category in categories_to_resolve:
-                category["dirs"] = os.listdir(category["path"])
-                for folder_name in category["dirs"]:
-                    try_folder_resolution(category["type"], folder_name, torrents)
-            seconds_passed = 0
-        else:
-            for category in categories_to_resolve:
-                new_dirs = [_dir for _dir in os.listdir(category["path"]) if _dir not in category["dirs"]]
-                for folder_name in new_dirs:
-                    try_folder_resolution(category["type"], folder_name, torrents)
-                category["dirs"] = category["dirs"] + new_dirs
+        # if seconds_passed > SECONDS_IN_A_DAY and datetime.datetime.now().hour() > RENEW_ALL_LINKS_AT:
+        #     downloads = sort_downloads(get_downloads(), {})
+        #     torrents = sort_torrents(get_torrents(), downloads, torrents)
+        #     for torrent in torrents:
+        #         try_folder_resolution(torrents[folder_name]["type"], folder_name, torrents[folder_name])
+
+        #     seconds_passed = 0
+        # else:
+        downloads = sort_downloads(get_downloads(200), downloads)
+        new_torrents = get_torrents(5)
+        new_torrents = [torrent for torrent in new_torrents if torrent["filename"] not in torrents or torrents[torrent["filename"]]["id"] != torrent["id"]]
+        new_torrents = new_torrents + [torrents[folder_name] for folder_name in torrents if any([link not in downloads for link in torrents[folder_name]["links"]])]
+        new_torrents = sort_torrents(new_torrents, downloads, {})
+        for folder_name in new_torrents:
+            try_folder_resolution(new_torrents[folder_name]["type"], folder_name, new_torrents[folder_name])
+        torrents = {**torrents, **new_torrents}
         
         sleep(FOLDER_CHECK_FREQUENCY)
         seconds_passed = seconds_passed + FOLDER_CHECK_FREQUENCY

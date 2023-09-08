@@ -1,7 +1,7 @@
-# Drive2CloudSync
+# Debrid Media Organizer
 ## _A Real-Debrid Quasi-Clone Media Library Curator_
 
-Drive2CloudSync is a Python script designed to help real-debrid cloud service users efficiently organize and maintain a highly structured, portable media collection on a remote drive. By iterating through folders within [rclone_RD] mounted drive containing user's remote downloaded torrents, Drive2CloudSync identifies whether each folder contains a movie or a TV show. It then leverages the python-torrent-title (PTN) library (version 2.5) to parse the torrent name and extract relevant media information. Based on this information, the script organizes a folder hierarchy on a user-specified drive location and populates it with .strm files containing links to the media resources.
+Debrid Media Organizer is a Python script designed to help real-debrid cloud service users efficiently organize and maintain a highly structured, portable media collection on a remote or local drive. By iterating through user's cloud torrent library, Debrid Media Organizer identifies whether each folder contains a movie or a TV show. It then leverages the python-torrent-title (PTN) library (version 2.5) to parse the torrent name and extract relevant media information. Based on this information, the script organizes a folder hierarchy on a user-specified drive location and populates it with .strm files containing links to the media resources.
 
 ## Table of Contents
 1. [Features](#features)
@@ -14,18 +14,18 @@ Drive2CloudSync is a Python script designed to help real-debrid cloud service us
 
 
 ## Features
-Drive2CloudSync offers several features to enhance your media organization and access experience:
+Debrid Media Organizer offers several features to enhance your media organization and access experience:
 
 - **Media Detection:** Automatically identifies whether a folder contains a movie or a TV show.
 - **Metadata Extraction:** Utilizes the PTN library to extract metadata from folder names.
 - **Structured Hierarchy:** Creates a well-structured folder hierarchy based on media information.
-.strm Files: Generates .strm files with renewed links every 7 days to ensure continuous access.
+- **.strm Files:** Generates .strm files with renewed links every 7 days to ensure continuous access.
 - **Compatibility:** Works seamlessly with Kodi, Plex, Emby, and similar media players.
 - **Low-Powered Device Access:** Allows users to access their cloud media collection on low-powered devices.
 - **Portability:** The portable quasi-clone can be easily mounted on different devices.
 
 ## Usage
-Before you can use Drive2CloudSync, you'll need to install Python (version >3.10) and ensure you have the necessary dependencies. Follow these steps to get started:
+Before you can use Debrid Media Organizer, you'll need to install Python (version >3.10) and ensure you have the necessary dependencies. Follow these steps to get started:
 1. Clone this repository to your local machine:
     ```sh
     git clone https://github.com/honest-mule/Drive2CloudSync.git
@@ -51,7 +51,7 @@ Before you can use Drive2CloudSync, you'll need to install Python (version >3.10
 7. Monitor `status.log` file for info, errors & exceptions
 
 ## Configuration
-Drive2CloudSync allows for some customization through its configuration file. To configure the script to your preferences, follow these steps:
+Debrid Media Organizer allows for some customization through its configuration file. To configure the script to your preferences, follow these steps:
 
 Open the `settings.py` file in the project directory.
 
@@ -59,19 +59,20 @@ Modify the following settings as needed:
 
 `SOURCE_DRIVE`: The path to your debrid cloud folder containing downloaded torrents.
 `DEST_ROOT`: The destination drive location where the nicely-named sophisticatedly structured hierarchy will be created.
-`FOLDER_CHECK_FREQUENCY`: Amount of time after which the rclone_RD mounted drive should be checked for changes
-Save your changes.
+`FOLDER_CHECK_FREQUENCY`: Amount of time after which the rclone_RD mounted drive should be checked for changes.
 `RENEW_ALL_LINKS_AT`: The daily hour after which the whole rclone_RD mounted drive should be re-iterated for dead-links
+`CORRECTIONS_FILE_LOCATION`: The corrections.csv file location which will used to track user asserted corrections.
 
 ## Scheduled Task
-For convenience, consider setting up a scheduled task (e.g., using cron on Unix-like systems) to run Drive2CloudSync at your preferred event. This ensures your media collection remains updated without manual intervention.
+For convenience, consider setting up a scheduled task (e.g., using cron on Unix-like systems) to run Debrid Media Organizer at your preferred event. This ensures your media collection remains updated without manual intervention.
 
-Example for running Drive2CloudSync at every reboot:
+Example for running Debrid Media Organizer at every reboot:
 `@reboot /usr/bin/python /path/to/drive2cloudsync/cataloguer.py`
 
 ## Plugins
 
-Drive2CloudSync is currently dependent on the following projects.
+~~Debrid Media Organizer is currently dependent on the following projects.~~
+Decoupled from Rclone_RD to make this tool standalone.
 Instructions on how to use them are linked below.
 
 | Plugin | README |

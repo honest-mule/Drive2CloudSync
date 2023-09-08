@@ -1,3 +1,4 @@
+import sys
 from urllib import request as URL_Request, error as URL_Error
 import requests
 from settings import _RD_API_KEY
@@ -11,17 +12,40 @@ headers = {
 def get_torrents(limit: int = 2500):
     torrents = []
     page = 1
+    total_received = 0
+    limit = limit if limit < 2500 else 2500
+    max_items = sys.maxsize if limit == 2500 else limit
     url = base_uri + f"/torrents?page={page}&limit={limit}"
     try:
         res = requests.get(url, headers=headers)
-        while(res.status_code == 200):
+        while res.status_code == 200 and total_received < max_items:
             torrents = torrents + res.json()
+            total_received = total_received + limit
             page = page + 1
             url = base_uri + f"/torrents?page={page}&limit={limit}"
             res = requests.get(url, headers=headers)
     except:
         pass
     return torrents
+
+def get_downloads(limit: int = 2500):
+    downloads = []
+    page = 1
+    total_received = 0
+    limit = limit if limit < 2500 else 2500
+    max_items = sys.maxsize if limit == 2500 else limit
+    url = base_uri + f"/downloads?page={page}&limit={limit}"
+    try:
+        res = requests.get(url, headers=headers)
+        while res.status_code == 200 and total_received < max_items:
+            downloads = downloads + res.json()
+            total_received = total_received + limit
+            page = page + 1
+            url = base_uri + f"/downloads?page={page}&limit={limit}"
+            res = requests.get(url, headers=headers)
+    except:
+        pass
+    return downloads
 
 def get_torrent_info(torrent_id):
     try:
@@ -79,4 +103,4 @@ def check_torrent_health(torrent_id):
 def reinstate_torrent(hash):
     pass
 
-__all__ = ["get_torrents", "get_torrent_info", "get_resource", "get_direct_link"]
+__all__ = ["get_torrents", "get_downloads", "get_torrent_info", "get_resource", "get_direct_link"]
