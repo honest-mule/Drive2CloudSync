@@ -364,6 +364,7 @@ def sort_torrents(torrents, downloads, _dict = {}):
             torrent["direct_links"][link] = downloads[link]
         torrent["type"] = resolve_media_type(torrent["filename"])
         _dict[torrent["filename"]] = torrent
+
     return _dict
 
     
@@ -420,6 +421,7 @@ def manage_corrections(corrections: list[Correction]):
 
 seconds_passed = 0
 SECONDS_IN_A_DAY = 24 * 60 * 60
+RESET_COUNTER = 3 * 60 * 60
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Debrid Media Organizer v1.2")
@@ -487,22 +489,22 @@ if __name__ == "__main__":
             correction.done = True
         corrections = manage_corrections(corrections)
 
-        # if seconds_passed > SECONDS_IN_A_DAY and datetime.datetime.now().hour() > RENEW_ALL_LINKS_AT:
-        #     downloads = sort_downloads(get_downloads(), {})
-        #     torrents = sort_torrents(get_torrents(), downloads, torrents)
-        #     for torrent in torrents:
-        #         try_folder_resolution(torrents[folder_name]["type"], folder_name, torrents[folder_name])
+        if seconds_passed > RESET_COUNTER:
+            downloads = sort_downloads(get_downloads(), {})
+            torrents = sort_torrents(get_torrents(), downloads, torrents)
+            for torrent in torrents:
+                try_folder_resolution(torrents[folder_name]["type"], folder_name, torrents[folder_name])
 
-        #     seconds_passed = 0
-        # else:
-        downloads = sort_downloads(get_downloads(200), downloads)
-        new_torrents = get_torrents(5)
-        new_torrents = [torrent for torrent in new_torrents if torrent["filename"] not in torrents or torrents[torrent["filename"]]["id"] != torrent["id"]]
-        new_torrents = new_torrents + [torrents[folder_name] for folder_name in torrents if any([link not in downloads for link in torrents[folder_name]["links"]])]
-        new_torrents = sort_torrents(new_torrents, downloads, {})
-        for folder_name in new_torrents:
-            try_folder_resolution(new_torrents[folder_name]["type"], folder_name, new_torrents[folder_name])
-        torrents = {**torrents, **new_torrents}
+            seconds_passed = 0
+        else:
+            downloads = sort_downloads(get_downloads(200), downloads)
+            new_torrents = get_torrents(5)
+            new_torrents = [torrent for torrent in new_torrents if torrent["filename"] not in torrents or torrents[torrent["filename"]]["id"] != torrent["id"]]
+            new_torrents = new_torrents + [torrents[folder_name] for folder_name in torrents if any([link not in downloads for link in torrents[folder_name]["links"]])]
+            new_torrents = sort_torrents(new_torrents, downloads, {})
+            for folder_name in new_torrents:
+                try_folder_resolution(new_torrents[folder_name]["type"], folder_name, new_torrents[folder_name])
+            torrents = {**torrents, **new_torrents}
         
         sleep(FOLDER_CHECK_FREQUENCY)
         seconds_passed = seconds_passed + FOLDER_CHECK_FREQUENCY
