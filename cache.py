@@ -107,8 +107,8 @@ class Cache():
             old_torrent_id = self.get_torrent_id(folder_name)
             if not old_torrent_id:
                 return False
-            c.execute("UPDATE list SET torrent_id=? WHERE torrent_id=?", (old_torrent_id, torrent_id))
-            c.execute("UPDATE torrents SET torrent_id=? WHERE torrent_id=?", (old_torrent_id, torrent_id))
+            c.execute("UPDATE list SET torrent_id=? WHERE torrent_id=?", (torrent_id, old_torrent_id))
+            c.execute("UPDATE torrents SET id=? WHERE id=?", (torrent_id, old_torrent_id))
             self.conn.commit()
         except Error as e:
             self.__log_error(e)
@@ -127,6 +127,16 @@ class Cache():
             return True
         except Error as e:
             self.__log_error(e)
+
+    def get_saved_torrent_ids(self):
+        results = []
+        try:
+            c = self.conn.cursor()
+            c.execute("SELECT id FROM torrents")
+            return [row[0] for row in c]
+        except Error as e:
+            self.__log_error(e)
+            return []
 
     def __log_error(self, e):
         if self.logger:

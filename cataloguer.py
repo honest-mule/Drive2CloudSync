@@ -66,7 +66,7 @@ def movies(folder_name, torrents, tmdb_info = None):
     if not new_folder_name:
         new_folder_name = cache.get_dest_folder2(folder_name)
         if new_folder_name:
-            cache.update_torrent_id(torrent["id"])
+            cache.update_torrent_id(torrent["id"], folder_name)
 
     if not new_folder_name:
         if not tmdb_info:
@@ -164,7 +164,7 @@ def shows(folder_name, torrent = None, tmdb_info = None):
     if not new_folder_name:
         new_folder_name = cache.get_dest_folder2(folder_name)
         if new_folder_name:
-            cache.update_torrent_id(torrent["id"])
+            cache.update_torrent_id(torrent["id"], folder_name)
     
     if not new_folder_name:
         if not tmdb_info:
@@ -381,7 +381,7 @@ def try_folder_resolution(type, folder_name, torrents):
     try:
         if type == 'movie':
             movies(folder_name, torrents)
-        elif type == 'show':
+        elif type == 'tv':
             shows(folder_name, torrents)
         else:
             unknown(folder_name, torrents)
@@ -396,7 +396,7 @@ def manage_corrections(corrections: list[Correction]):
     try:
         if not os.path.isfile(CORRECTIONS_FILE_LOCATION):
             return _corrections
-        with open(CORRECTIONS_FILE_LOCATION, "r+") as corrections_file:
+        with open(CORRECTIONS_FILE_LOCATION, "r+", encoding="utf-8") as corrections_file:
             for line in corrections_file.readlines():
                 _values = line.split(",")
                 correction = Correction(tmdb_id=_values[0].strip(),
@@ -473,7 +473,8 @@ if __name__ == "__main__":
         for folder_name in torrents:
             try_folder_resolution(torrents[folder_name]["type"], folder_name, torrents[folder_name])
         sleep(5 * 60)
-        seconds_passed = 5 * 60
+
+    seconds_passed = 5 * 60
 
     while True:
 
@@ -498,8 +499,13 @@ if __name__ == "__main__":
             seconds_passed = 0
         else:
             downloads = sort_downloads(get_downloads(200), downloads)
-            new_torrents = get_torrents(5)
-            new_torrents = [torrent for torrent in new_torrents if torrent["filename"] not in torrents or torrents[torrent["filename"]]["id"] != torrent["id"]]
+            old_torrents = cache.get_saved_torrent_ids()
+            new_torrents = get_torrents(30)
+            # : It's a new torrent if:
+            #   - the torrent's ID is not a part of known torrent IDs
+            #   - the torrent's filename is not a part of sorted torrents dict object
+            #   - any of the files belonging to the torrent do not have a valid direct link
+            new_torrents = [torrent for torrent in new_torrents if torrent["id"] not in old_torrents or torrent["filename"] not in torrents or torrents[torrent["filename"]]["id"] != torrent["id"]]
             new_torrents = new_torrents + [torrents[folder_name] for folder_name in torrents if any([link not in downloads for link in torrents[folder_name]["links"]])]
             new_torrents = sort_torrents(new_torrents, downloads, {})
             for folder_name in new_torrents:
