@@ -43,39 +43,32 @@ movie_scraper = TMDBMovieScraper(None, None, None)
 
 SEVEN_DAYS = 7 * 24 * 60 * 60
 
-def movies(folder_name, torrents, tmdb_info = None):
-    torrent = None
-    if isinstance(torrents, dict):
-        if "id" in torrents:
-            torrent = torrents
-        elif folder_name in torrents:
-            torrent = torrents[folder_name]
+def movies(torrent, tmdb_info = None):
     if not torrent:
-        torrent_id = cache.get_torrent_id(folder_name)
-        if not torrent_id:
-            logger.warning(f"Skipping movies\{folder_name} since respective torrent_id could not be found")
-            return
-        torrent = get_torrent_info(torrent_id)
-        if not torrent:
-            logger.warning(f"Skipping movies\{folder_name} since Real-Debrid API returned without relevant torrent info")
-            return
-    if torrent["status"] != "downloaded":
+        logger.warning(f"Skipping movies\??? since torrent object is empty")
+        return
+    
+    torrent_info = get_torrent_info(torrent["id"])
+    if not torrent_info:
+        logger.warning(f"Skipping movies\{torrent['filename']} since Real-Debrid API returned without relevant torrent info")
+        return
+    if torrent_info["status"] != "downloaded":
         return
     
     new_folder_name = cache.get_dest_folder(torrent["id"])
     if not new_folder_name:
-        new_folder_name = cache.get_dest_folder2(folder_name)
+        new_folder_name = cache.get_dest_folder2(torrent["hash"])
         if new_folder_name:
-            cache.update_torrent_id(torrent["id"], folder_name)
+            cache.update_torrent_id(torrent["id"], torrent['hash'])
 
     if not new_folder_name:
         if not tmdb_info:
             cache_record = cache.fetch(torrent["id"])
             if not cache_record:
-                [title, year] = get_movie_info_from_torrent_name(folder_name)
+                [title, year] = get_movie_info_from_torrent_name(torrent['filename'])
                 tmdb_info = movie_scraper.search(title, year)
                 if len(tmdb_info) == 0:
-                    logger.warning(f"Skipping movies\{folder_name} since TMDB returned 0 results")
+                    logger.warning(f"Skipping movies\{torrent['filename']} since TMDB returned 0 results")
                     return
                 else:
                     max_similarity_ratio = 0
@@ -89,8 +82,8 @@ def movies(folder_name, torrents, tmdb_info = None):
                             max_similarity_ratio = sim_ratio
                             _tmdb_info = _mv_info
                     tmdb_info = _tmdb_info if _tmdb_info else tmdb_info[0]
-                    logger.info(f"Found best match for {folder_name} -\n\tTMDB_ID: {tmdb_info['id']}\n\tTitle: {tmdb_info['title']}\n\tOG title: {tmdb_info['original_title']}")
-                cache.save(torrent["id"], "movie", tmdb_info["id"], folder_name)
+                    logger.info(f"Found best match for {torrent['filename']} -\n\tTMDB_ID: {tmdb_info['id']}\n\tTitle: {tmdb_info['title']}\n\tOG title: {tmdb_info['original_title']}")
+                cache.save(torrent["id"], "movie", tmdb_info["id"], torrent['filename'], torrent["hash"])
                 cache_record = cache.fetch(torrent["id"])
             else:
                 tmdb_info = movie_scraper.get_details({"tmdb": cache_record.tmdb_id})["info"]
@@ -102,13 +95,6 @@ def movies(folder_name, torrents, tmdb_info = None):
     new_folder_path = os.path.join(os.sep, DEST_ROOT + os.sep, "movies", new_folder_name)
     os.makedirs(new_folder_path, exist_ok=True)
 
-    if "files" in torrent:
-        torrent_info = torrent
-    else:
-        torrent_info = get_torrent_info(torrent["id"])
-        if not torrent_info:
-            logger.warning(f"Skipping movies\{folder_name} since Real-Debrid API returned without relevant torrent info")
-            return
     selected_files = [x for x in torrent_info['files'] if x['selected']]
     for file_info, file_uri in zip(selected_files, torrent_info['links']):
         if file_uri in torrent["direct_links"]:
@@ -140,31 +126,24 @@ def movies(folder_name, torrents, tmdb_info = None):
             strm_file.write(direct_link)
         logger.debug(f"Created:\n\tStream path: {strm_path}\n\tDirect link: {direct_link}")
 
-def shows(folder_name, torrent = None, tmdb_info = None):
-    torrent = None
-    if isinstance(torrents, dict):
-        if "id" in torrents:
-            torrent = torrents
-        elif folder_name in torrents:
-            torrent = torrents[folder_name]
+def shows(torrent, tmdb_info = None):
     if not torrent:
-        torrent_id = cache.get_torrent_id(folder_name)
-        if not torrent_id:
-            logger.warning(f"Skipping shows\{folder_name} since respective torrent_id could not be found")
-            return
-        torrent = get_torrent_info(torrent_id)
-        if not torrent:
-            logger.warning(f"Skipping movies\{folder_name} since Real-Debrid API returned without relevant torrent info")
-            return
-    if torrent["status"] != "downloaded":
+        logger.warning(f"Skipping shows\??? since torrent object is empty")
         return
     
-    [title, year, season_number_in_root, _] = get_show_info_from_torrent_name(folder_name)
+    torrent_info = get_torrent_info(torrent["id"])
+    if not torrent_info:
+        logger.warning(f"Skipping shows\{torrent['filename']} since Real-Debrid API returned without relevant torrent info")
+        return
+    if torrent_info["status"] != "downloaded":
+        return
+    
+    [title, year, season_number_in_root, _] = get_show_info_from_torrent_name(torrent['filename'])
     new_folder_name = cache.get_dest_folder(torrent["id"])
     if not new_folder_name:
-        new_folder_name = cache.get_dest_folder2(folder_name)
+        new_folder_name = cache.get_dest_folder2(torrent["hash"])
         if new_folder_name:
-            cache.update_torrent_id(torrent["id"], folder_name)
+            cache.update_torrent_id(torrent["id"], torrent['hash'])
     
     if not new_folder_name:
         if not tmdb_info:
@@ -172,7 +151,7 @@ def shows(folder_name, torrent = None, tmdb_info = None):
             if not cache_record:
                 tmdb_info = search_show(title, year)
                 if len(tmdb_info) == 0:
-                    logger.warning(f"Skipping shows\{folder_name} since TMDB returned 0 results")
+                    logger.warning(f"Skipping shows\{torrent['filename']} since TMDB returned 0 results")
                     return
                 else:
                     max_similarity_ratio = 0
@@ -186,7 +165,7 @@ def shows(folder_name, torrent = None, tmdb_info = None):
                             max_similarity_ratio = sim_ratio
                             _tmdb_info = _shw_info
                     tmdb_info = _tmdb_info
-                cache.save(torrent["id"], "tv", tmdb_info["id"], folder_name)
+                cache.save(torrent["id"], "tv", tmdb_info["id"], torrent['filename'], torrent["hash"])
                 cache_record = cache.fetch(torrent["id"])
             else:
                 tmdb_info = load_show_info(cache_record.tmdb_id)
@@ -197,13 +176,6 @@ def shows(folder_name, torrent = None, tmdb_info = None):
     new_folder_path = os.path.join(os.sep, DEST_ROOT + os.sep, "shows", new_folder_name)
     os.makedirs(new_folder_path, exist_ok=True)
 
-    if "files" in torrent:
-        torrent_info = torrent
-    else:
-        torrent_info = get_torrent_info(torrent['id'])
-        if not torrent_info:
-            logger.warning(f"Skipping movies\{folder_name} since Real-Debrid API returned without relevant torrent info")
-            return
     selected_files = [x for x in torrent_info['files'] if x['selected']]
     ep_counter = 0
     for file_info, file_uri in zip(selected_files, torrent_info['links']):
@@ -276,29 +248,22 @@ def shows(folder_name, torrent = None, tmdb_info = None):
             strm_file.write(direct_link)
         logger.debug(f"Created:\n\tStream path: {strm_path}\n\tDirect link: {direct_link}")
 
-def unknown(folder_name: str, torrents = None):
-    torrent = None
-    if isinstance(torrents, dict):
-        if "id" in torrents:
-            torrent = torrents
-        elif folder_name in torrents:
-            torrent = torrents[folder_name]
-        else:
-            logger.warning(f"Skipping default\{folder_name} since its respective torrent couldn't be found.")
-            return False
+def unknown(torrent = None):
+    if not torrent:
+        return False
     cache_record = cache.fetch(torrent["id"])
     if not cache_record:
-        _tmp = cache.get_torrent_id(folder_name)
+        _tmp = cache.get_torrent_id(torrent['hash'])
         if _tmp:
-            cache.update_torrent_id(torrent["id"], folder_name)
+            cache.update_torrent_id(torrent["id"], old_torrent_id=_tmp)
             cache_record = cache.fetch(torrent["id"])
         else:
-            logger.warning(f"Skipping default\{folder_name} since its an unknown entity")
+            logger.warning(f"Skipping default\{torrent['filename']} since its an unknown entity")
             return
     if cache_record.type == "movie":
-        return movies(folder_name, torrent)
+        return movies(torrent)
     elif cache_record.type == "tv":
-        return shows(folder_name, torrent)
+        return shows(torrent)
     
 def write_strm_file(strm_path: str, direct_link: str):
     try:
@@ -356,14 +321,15 @@ def resolve_media_type(folder_name):
 def sort_torrents(torrents, downloads, _dict = {}):
     for torrent in torrents:
         torrent["direct_links"] = {}
-        if torrent["filename"] in _dict or torrent["status"] != "downloaded":
+        hash = torrent["hash"].lower()
+        if hash in _dict or torrent["status"] != "downloaded":
             continue
         for link in torrent["links"]:
             if link not in downloads:
                 continue
             torrent["direct_links"][link] = downloads[link]
         torrent["type"] = resolve_media_type(torrent["filename"])
-        _dict[torrent["filename"]] = torrent
+        _dict[hash] = torrent
 
     return _dict
 
@@ -374,21 +340,21 @@ def error_string(ex: Exception) -> str:
         ''.join(traceback.format_exception(None, ex, ex.__traceback__)).strip()
     ])
     
-def try_folder_resolution(type, folder_name, torrents):
+def try_folder_resolution(type, torrent):
     if not torrents:
         logger.error("Empty torrents list. Check internet connection or RD API key.")
         return
     try:
         if type == 'movie':
-            movies(folder_name, torrents)
+            movies(torrent)
         elif type == 'tv':
-            shows(folder_name, torrents)
+            shows(torrent)
         else:
-            unknown(folder_name, torrents)
+            unknown(torrent)
     except Exception as ex:
         ex_string = error_string(ex)
         ex_string = ex_string.replace("\n", "\n\t")
-        logger.error(f"{type}\{folder_name} could not be resolved\n\tDetails: {ex_string}")
+        logger.error(f"{type}\{torrent['filename']} could not be resolved\n\tDetails: {ex_string}")
 
 def manage_corrections(corrections: list[Correction]):
     global CORRECTIONS_FILE_LOCATION
@@ -400,10 +366,10 @@ def manage_corrections(corrections: list[Correction]):
             for line in corrections_file.readlines():
                 _values = line.split(",")
                 correction = Correction(tmdb_id=_values[0].strip(),
-                                        type=_values[1].strip(), folder_name=_values[2].strip())
+                                        type=_values[1].strip(), hash=_values[2].strip().lower())
                 omit_correction = False
                 for former_correction in corrections:
-                    if former_correction.folder_name == correction.folder_name and former_correction.done:
+                    if former_correction.hash == correction.hash and former_correction.done:
                         omit_correction = True
                         break
                 if not omit_correction:
@@ -411,7 +377,7 @@ def manage_corrections(corrections: list[Correction]):
             corrections_file.seek(0)
             corrections_file.truncate()
             for pending in _corrections:
-                corrections_file.write(f"{pending.tmdb_id},{pending.type},{pending.folder_name}\n")
+                corrections_file.write(f"{pending.tmdb_id},{pending.type},{pending.hash}\n")
     except Exception as ex:
         ex_string = error_string(ex)
         ex_string = ex_string.replace("\n", "\n\t")
@@ -421,95 +387,81 @@ def manage_corrections(corrections: list[Correction]):
 
 seconds_passed = 0
 SECONDS_IN_A_DAY = 24 * 60 * 60
-RESET_COUNTER = 3 * 60 * 60
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Debrid Media Organizer v1.2")
-    parser.add_argument('--skip-media-reset', action='store_true', required=False,
+    parser.add_argument('-rc', '--run-corrections', action='store_true', required=False,
+                        help="Will exit after making all the corrections")
+    parser.add_argument('-s', '--skip-media-reset', action='store_true', required=False,
                         help="If you're re-rerunning the script multiple times a day then choose this option.")
+    parser.add_argument('-x', '--keep-running', action='store_true', required=False,
+                        help="Runs the script as a service")
+    parser.add_argument('-v', '--version', action='version',
+                    version='Debrid Media Organizer 2.0.1', help="Show program's version number and exit.")
     args = parser.parse_args()
 
     downloads = sort_downloads(get_downloads())
     torrents = sort_torrents(get_torrents(), downloads)
 
-    # Legacy
-    # movies_path = os.path.join(os.sep, SOURCE_DRIVE + os.sep, "movies")
-    # shows_path = os.path.join(os.sep, SOURCE_DRIVE + os.sep, "shows")
-    # uncategorized_path = os.path.join(os.sep, SOURCE_DRIVE + os.sep, "default")
-
-    categories_to_resolve = [
-        {
-            "type": "movie",
-            # "path": movies_path,
-            "dirs": []
-        },
-        {
-            "type": "show",
-            # "path": shows_path,
-            "dirs": []
-        },
-        {
-            "type": "unknown",
-            # "path": uncategorized_path,
-            "dirs": []
-        }
-    ]
-
     corrections: list[Correction] = []
     corrections = manage_corrections(corrections)
     for correction in corrections:
-        torrents[correction.folder_name]["type"] = correction.type
+        torrents[correction.hash]["type"] = correction.type
         if not cache.fix_entry(correction):
             try:
-                cache.save(torrents[correction.folder_name]["id"], correction.type, correction.tmdb_id, correction.folder_name)
+                cache.save(torrents[correction.hash]["id"], correction.type, correction.tmdb_id, torrents[correction.hash]['filename'], correction.hash)
             except:
                 continue
-        try_folder_resolution(correction.type, correction.folder_name, torrents[correction.folder_name])
+        try_folder_resolution(correction.type, torrents[correction.hash])
         correction.done = True
     corrections = manage_corrections(corrections)
 
+    if args.run_corrections:
+        exit()
     
     if not args.skip_media_reset:
-        for folder_name in torrents:
-            try_folder_resolution(torrents[folder_name]["type"], folder_name, torrents[folder_name])
+        for hash in torrents:
+            try_folder_resolution(torrents[hash]["type"], torrents[hash])
+        
+    if args.keep_running:
         sleep(5 * 60)
+        seconds_passed = 5 * 60
 
-    seconds_passed = 5 * 60
+    while args.keep_running:
 
-    while True:
-
+        corrections: list[Correction] = []
         corrections = manage_corrections(corrections)
         for correction in corrections:
-            torrents[correction.folder_name]["type"] = correction.type
+            torrents[correction.hash]["type"] = correction.type
             if not cache.fix_entry(correction):
                 try:
-                    cache.save(torrents[correction.folder_name]["id"], correction.type, correction.tmdb_id, correction.folder_name)
+                    cache.save(torrents[correction.hash]["id"], correction.type, correction.tmdb_id, torrents[correction.hash]['filename'], correction.hash)
                 except:
                     continue
-            try_folder_resolution(correction.type, correction.folder_name, torrents[correction.folder_name])
+            try_folder_resolution(correction.type, torrents[correction.hash])
             correction.done = True
         corrections = manage_corrections(corrections)
 
         if seconds_passed > RESET_COUNTER:
             downloads = sort_downloads(get_downloads(), {})
             torrents = sort_torrents(get_torrents(), downloads, torrents)
-            for torrent in torrents:
-                try_folder_resolution(torrents[folder_name]["type"], folder_name, torrents[folder_name])
+            for hash in torrents:
+                try_folder_resolution(torrents[hash]["type"], torrents[hash])
 
             seconds_passed = 0
         else:
             downloads = sort_downloads(get_downloads(200), downloads)
             old_torrents = cache.get_saved_torrent_ids()
-            new_torrents = get_torrents(30)
+            new_torrents = get_torrents((FOLDER_CHECK_FREQUENCY / 60) * 10)
             # : It's a new torrent if:
             #   - the torrent's ID is not a part of known torrent IDs
             #   - the torrent's filename is not a part of sorted torrents dict object
             #   - any of the files belonging to the torrent do not have a valid direct link
-            new_torrents = [torrent for torrent in new_torrents if torrent["id"] not in old_torrents or torrent["filename"] not in torrents or torrents[torrent["filename"]]["id"] != torrent["id"]]
-            new_torrents = new_torrents + [torrents[folder_name] for folder_name in torrents if any([link not in downloads for link in torrents[folder_name]["links"]])]
+            new_torrents = [torrent for torrent in new_torrents if torrent["id"] not in old_torrents or torrent["hash"] not in torrents or torrents[torrent["hash"]]["id"] != torrent["id"]]
+            new_torrents = new_torrents + [torrents[hash] for hash in torrents if any([link not in downloads for link in torrents[hash]["links"]])]
             new_torrents = sort_torrents(new_torrents, downloads, {})
-            for folder_name in new_torrents:
-                try_folder_resolution(new_torrents[folder_name]["type"], folder_name, new_torrents[folder_name])
+            for hash in new_torrents:
+                try_folder_resolution(new_torrents[hash]["type"], new_torrents[hash])
             torrents = {**torrents, **new_torrents}
         
         sleep(FOLDER_CHECK_FREQUENCY)

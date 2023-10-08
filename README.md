@@ -1,6 +1,8 @@
 # Debrid Media Organizer
 ## _A Real-Debrid Quasi-Clone Media Library Curator_
 
+![Static Badge](https://img.shields.io/badge/Version-2.0.1-brightgreen) ![Static Badge](https://img.shields.io/badge/Python-3.10%2B-brightgreen)
+
 Debrid Media Organizer is a Python script designed to help real-debrid cloud service users efficiently organize and maintain a highly structured, portable media collection on a remote or local drive. By iterating through user's cloud torrent library, Debrid Media Organizer identifies whether each folder contains a movie or a TV show. It then leverages the python-torrent-title (PTN) library (version 2.5) to parse the torrent name and extract relevant media information. Based on this information, the script organizes a folder hierarchy on a user-specified drive location and populates it with .strm files containing links to the media resources.
 
 ## Table of Contents
@@ -46,7 +48,7 @@ Before you can use Debrid Media Organizer, you'll need to install Python (versio
 5. Edit source and destination paths in `settings.py` file
 6. Run the script by using the following command:
     ```sh
-    python cataloguer.py
+    python cataloguer.py -h
     ```
 7. Monitor `status.log` file for info, errors & exceptions
 
@@ -57,22 +59,24 @@ Open the `settings.py` file in the project directory.
 
 Modify the following settings as needed:
 
-`SOURCE_DRIVE`: The path to your debrid cloud folder containing downloaded torrents.
-`DEST_ROOT`: The destination drive location where the nicely-named sophisticatedly structured hierarchy will be created.
-`FOLDER_CHECK_FREQUENCY`: Amount of time after which the rclone_RD mounted drive should be checked for changes.
-`RENEW_ALL_LINKS_AT`: The daily hour after which the whole rclone_RD mounted drive should be re-iterated for dead-links
+`DEST_ROOT`: The destination drive location where the nicely-named & sophisticatedly structured hierarchy will be created.
+`FOLDER_CHECK_FREQUENCY`: Amount of time in seconds after which the cloud library should be checked for changes.
+`RESET_COUNTER`: The amound of hours after which the whole cloud library should be re-iterated for dead-links
 `CORRECTIONS_FILE_LOCATION`: The corrections.csv file location which will used to track user asserted corrections.
 
 ## Scheduled Task
 For convenience, consider setting up a scheduled task (e.g., using cron on Unix-like systems) to run Debrid Media Organizer at your preferred event. This ensures your media collection remains updated without manual intervention.
 
 Example for running Debrid Media Organizer at every reboot:
-`@reboot /usr/bin/python /path/to/drive2cloudsync/cataloguer.py`
+`@reboot /usr/bin/python /path/to/drive2cloudsync/cataloguer.py --keep-running`
+
+Alternatively, it can be run just once every few hours:
+`* 0/4 * * * /usr/bin/python /path/to/drive2cloudsync/cataloguer.py`
 
 ## Plugins
 
 ~~Debrid Media Organizer is currently dependent on the following projects.~~
-Decoupled from Rclone_RD to make this tool standalone.
+De-coupled from Rclone_RD to make this tool standalone. Nonetheless, it's a resourceful tool so you should probably install it.
 Instructions on how to use them are linked below.
 
 | Plugin | README |

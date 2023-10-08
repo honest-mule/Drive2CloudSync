@@ -131,14 +131,14 @@ def get_show_info_from_torrent_name(folder_name: str):
     return [title, year, season, episodes]
 
 class Correction:
-    folder_name = None
+    hash = None
     tmdb_id = None
     type = None
     done = False
-    def __init__(self, tmdb_id, type, folder_name) -> None:
+    def __init__(self, tmdb_id, type, hash) -> None:
         self.tmdb_id = int(tmdb_id)
         self.type = type
-        self.folder_name = folder_name
+        self.hash = hash
 
 __all__ = [
     "sanitise_title_for_windows_folder_name",

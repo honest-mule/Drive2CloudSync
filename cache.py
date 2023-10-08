@@ -36,11 +36,11 @@ class Cache():
         except Error as e:
             self.__log_error(e)
 
-    def save(self, torrent_id, type, tmdb_id, folder_name):
+    def save(self, torrent_id, type, tmdb_id, folder_name, hash):
         try:
             c = self.conn.cursor()
             c.execute("INSERT OR IGNORE INTO list (torrent_id, type, tmdb_id) VALUES(?,?,?)", (torrent_id, type, tmdb_id))
-            c.execute("INSERT OR IGNORE INTO torrents (id, folder) VALUES (?,?)", (torrent_id, folder_name))
+            c.execute("INSERT OR IGNORE INTO torrents (id, hash, folder) VALUES (?,?,?)", (torrent_id, hash, folder_name))
             self.conn.commit()
         except Error as e:
             self.__log_error(e)
@@ -57,10 +57,10 @@ class Cache():
         except Error as e:
             self.__log_error(e)
 
-    def get_torrent_id(self, folder_name):
+    def get_torrent_id(self, hash):
         try:
             c = self.conn.cursor()
-            c.execute("SELECT id FROM torrents WHERE folder=?", (folder_name,))
+            c.execute("SELECT id FROM torrents WHERE hash=?", (hash,))
             result = c.fetchone()
             if result:
                 return result[0]
@@ -69,7 +69,7 @@ class Cache():
         except Error as e:
             self.__log_error(e)
 
-    def get_dest_folder(self, torrent_id):
+    def get_dest_folder(self, torrent_id=""):
         try:
             c = self.conn.cursor()
             c.execute("SELECT dest_folder FROM torrents WHERE id=?", (torrent_id,))
@@ -81,10 +81,22 @@ class Cache():
         except Error as e:
             self.__log_error(e)
 
-    def get_dest_folder2(self, folder_name):
+    def get_dest_folder2(self, hash=""):
         try:
             c = self.conn.cursor()
-            c.execute("SELECT dest_folder FROM torrents WHERE folder=?", (folder_name,))
+            c.execute("SELECT dest_folder FROM torrents WHERE hash=?", (hash,))
+            result = c.fetchone()
+            if result:
+                return result[0]
+            else:
+                return None
+        except Error as e:
+            self.__log_error(e)
+
+    def get_dest_folder_by_torrent_hash(self, hash):
+        try:
+            c = self.conn.cursor()
+            c.execute("SELECT dest_folder FROM torrents WHERE hash=?", (hash,))
             result = c.fetchone()
             if result:
                 return result[0]
@@ -101,10 +113,11 @@ class Cache():
         except Error as e:
             self.__log_error(e)
     
-    def update_torrent_id(self, torrent_id, folder_name):
+    def update_torrent_id(self, torrent_id, hash = None, old_torrent_id = None):
         try:
             c = self.conn.cursor()
-            old_torrent_id = self.get_torrent_id(folder_name)
+            if not old_torrent_id and hash:
+                old_torrent_id = self.get_torrent_id(hash)
             if not old_torrent_id:
                 return False
             c.execute("UPDATE list SET torrent_id=? WHERE torrent_id=?", (torrent_id, old_torrent_id))
@@ -116,13 +129,13 @@ class Cache():
     def fix_entry(self, correction: Correction):
         try:
             c = self.conn.cursor()
-            c.execute("SELECT id FROM torrents WHERE folder=?", (correction.folder_name,))
+            c.execute("SELECT id FROM torrents WHERE hash=?", (correction.hash,))
             torrent_id = c.fetchone()
             if not torrent_id:
                 return False
             torrent_id = torrent_id[0]
             c.execute("UPDATE list SET type=?,tmdb_id=? WHERE torrent_id=?", (correction.type, correction.tmdb_id, torrent_id))
-            c.execute("UPDATE torrents SET folder=?,dest_folder=NULL WHERE id=?", (correction.folder_name, torrent_id))
+            c.execute("UPDATE torrents SET dest_folder=NULL WHERE id=?", (torrent_id,))
             self.conn.commit()
             return True
         except Error as e:
