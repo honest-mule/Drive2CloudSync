@@ -1,7 +1,7 @@
 # Debrid Media Organizer
 ## _A Real-Debrid Quasi-Clone Media Library Curator_
 
-![Static Badge](https://img.shields.io/badge/Version-2.0.1-brightgreen) ![Static Badge](https://img.shields.io/badge/Python-3.10%2B-brightgreen)
+![Static Badge](https://img.shields.io/badge/Version-2.0.2-brightgreen) ![Static Badge](https://img.shields.io/badge/Python-3.10%2B-brightgreen)
 
 Debrid Media Organizer is a Python script designed to help real-debrid cloud service users efficiently organize and maintain a highly structured, portable media collection on a remote or local drive. By iterating through user's cloud torrent library, Debrid Media Organizer identifies whether each folder contains a movie or a TV show. It then leverages the python-torrent-title (PTN) library (version 2.5) to parse the torrent name and extract relevant media information. Based on this information, the script organizes a folder hierarchy on a user-specified drive location and populates it with .strm files containing links to the media resources.
 

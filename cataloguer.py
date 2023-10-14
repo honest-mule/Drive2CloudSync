@@ -303,10 +303,7 @@ def is_expired(json_date):
 def sort_downloads(downloads = [], _dict = {}):
     for download_info in downloads:
         _dict[download_info["link"]] = download_info
-    for link in _dict:
-        if is_expired(_dict[link]["generated"]):
-            del _dict[link]
-    return _dict
+    return [_dict[link] for link in _dict if not is_expired(_dict[link]["generated"])]
 
 def resolve_media_type(folder_name):
     tv_regex = re.compile(r"[\W](S[0-9]{2}|SEASON|COMPLETE|[^457a-z\W\s]-[0-9]+)", re.RegexFlag.IGNORECASE)
@@ -389,7 +386,7 @@ seconds_passed = 0
 SECONDS_IN_A_DAY = 24 * 60 * 60
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Debrid Media Organizer v1.2")
+    parser = argparse.ArgumentParser(description="Debrid Media Organizer v2.0.2")
     parser.add_argument('-rc', '--run-corrections', action='store_true', required=False,
                         help="Will exit after making all the corrections")
     parser.add_argument('-s', '--skip-media-reset', action='store_true', required=False,
@@ -397,7 +394,7 @@ if __name__ == "__main__":
     parser.add_argument('-x', '--keep-running', action='store_true', required=False,
                         help="Runs the script as a service")
     parser.add_argument('-v', '--version', action='version',
-                    version='Debrid Media Organizer 2.0.1', help="Show program's version number and exit.")
+                    version='Debrid Media Organizer 2.0.2', help="Show program's version number and exit.")
     args = parser.parse_args()
 
     downloads = sort_downloads(get_downloads())
