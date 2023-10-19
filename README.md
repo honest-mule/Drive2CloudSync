@@ -1,7 +1,7 @@
 # Debrid Media Organizer
 ## _A Real-Debrid Quasi-Clone Media Library Curator_
 
-![Static Badge](https://img.shields.io/badge/Version-2.0.2-brightgreen) ![Static Badge](https://img.shields.io/badge/Python-3.10%2B-brightgreen)
+![Static Badge](https://img.shields.io/badge/Version-2.0.3-brightgreen) ![Static Badge](https://img.shields.io/badge/Python-3.10%2B-brightgreen)
 
 Debrid Media Organizer is a Python script designed to help real-debrid cloud service users efficiently organize and maintain a highly structured, portable media collection on a remote or local drive. By iterating through user's cloud torrent library, Debrid Media Organizer identifies whether each folder contains a movie or a TV show. It then leverages the python-torrent-title (PTN) library (version 2.5) to parse the torrent name and extract relevant media information. Based on this information, the script organizes a folder hierarchy on a user-specified drive location and populates it with .strm files containing links to the media resources.
 
@@ -22,7 +22,7 @@ Debrid Media Organizer offers several features to enhance your media organizatio
 - **Metadata Extraction:** Utilizes the PTN library to extract metadata from folder names.
 - **Structured Hierarchy:** Creates a well-structured folder hierarchy based on media information.
 - **.strm Files:** Generates .strm files with renewed links every 7 days to ensure continuous access.
-- **Compatibility:** Works seamlessly with Kodi, Plex, Emby, and similar media players.
+- **Compatibility:** Works seamlessly with Kodi, ~~Plex~~, Emby, and similar media players.
 - **Low-Powered Device Access:** Allows users to access their cloud media collection on low-powered devices.
 - **Portability:** The portable quasi-clone can be easily mounted on different devices.
 
@@ -60,8 +60,11 @@ Open the `settings.py` file in the project directory.
 Modify the following settings as needed:
 
 `DEST_ROOT`: The destination drive location where the nicely-named & sophisticatedly structured hierarchy will be created.
+
 `FOLDER_CHECK_FREQUENCY`: Amount of time in seconds after which the cloud library should be checked for changes.
+
 `RESET_COUNTER`: The amound of hours after which the whole cloud library should be re-iterated for dead-links
+
 `CORRECTIONS_FILE_LOCATION`: The corrections.csv file location which will used to track user asserted corrections.
 
 ## Scheduled Task
@@ -76,7 +79,8 @@ Alternatively, it can be run just once every few hours:
 ## Plugins
 
 ~~Debrid Media Organizer is currently dependent on the following projects.~~
-De-coupled from Rclone_RD to make this tool standalone. Nonetheless, it's a resourceful tool so you should probably install it.
+De-coupled from rclone_RD to make this tool standalone.
+Nonetheless, itsToggle's rclone_RD is a very a resourceful tool which will greatly help you in keeping your real-debrid torrent media library alive, so you should probably install it.
 Instructions on how to use them are linked below.
 
 | Plugin | README |

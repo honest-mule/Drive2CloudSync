@@ -56,6 +56,7 @@ class Cache():
                 return None
         except Error as e:
             self.__log_error(e)
+            return None
 
     def get_torrent_id(self, hash):
         try:
@@ -68,6 +69,7 @@ class Cache():
                 return None
         except Error as e:
             self.__log_error(e)
+            return None
 
     def get_dest_folder(self, torrent_id=""):
         try:
@@ -80,6 +82,7 @@ class Cache():
                 return None
         except Error as e:
             self.__log_error(e)
+            return None
 
     def get_dest_folder2(self, hash=""):
         try:
@@ -92,6 +95,7 @@ class Cache():
                 return None
         except Error as e:
             self.__log_error(e)
+            return None
 
     def get_dest_folder_by_torrent_hash(self, hash):
         try:
@@ -104,14 +108,17 @@ class Cache():
                 return None
         except Error as e:
             self.__log_error(e)
+            return None
 
     def save_dest_folder(self, torrent_id, dest_folder):
         try:
             c = self.conn.cursor()
             c.execute("UPDATE torrents SET dest_folder=? WHERE id=?", (dest_folder, torrent_id))
             self.conn.commit()
+            return True
         except Error as e:
             self.__log_error(e)
+            return False
     
     def update_torrent_id(self, torrent_id, hash = None, old_torrent_id = None):
         try:
@@ -125,6 +132,7 @@ class Cache():
             self.conn.commit()
         except Error as e:
             self.__log_error(e)
+            return False
 
     def fix_entry(self, correction: Correction):
         try:
@@ -140,6 +148,7 @@ class Cache():
             return True
         except Error as e:
             self.__log_error(e)
+            return False
 
     def get_saved_torrent_ids(self):
         results = []

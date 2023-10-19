@@ -65,6 +65,11 @@ def movies(torrent, tmdb_info = None):
         if not tmdb_info:
             cache_record = cache.fetch(torrent["id"])
             if not cache_record:
+                old_torrent_id = cache.get_torrent_id(torrent["hash"])
+                if old_torrent_id:
+                    cache.update_torrent_id(torrent["id"], torrent["hash"], old_torrent_id)
+                    cache_record = cache.fetch(torrent["id"])
+            if not cache_record:
                 [title, year] = get_movie_info_from_torrent_name(torrent['filename'])
                 tmdb_info = movie_scraper.search(title, year)
                 if len(tmdb_info) == 0:
@@ -148,6 +153,11 @@ def shows(torrent, tmdb_info = None):
     if not new_folder_name:
         if not tmdb_info:
             cache_record = cache.fetch(torrent["id"])
+            if not cache_record:
+                old_torrent_id = cache.get_torrent_id(torrent["hash"])
+                if old_torrent_id:
+                    cache.update_torrent_id(torrent["id"], torrent["hash"], old_torrent_id)
+                    cache_record = cache.fetch(torrent["id"])
             if not cache_record:
                 tmdb_info = search_show(title, year)
                 if len(tmdb_info) == 0:
@@ -386,7 +396,7 @@ seconds_passed = 0
 SECONDS_IN_A_DAY = 24 * 60 * 60
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Debrid Media Organizer v2.0.2")
+    parser = argparse.ArgumentParser(description="Debrid Media Organizer v2.0.3")
     parser.add_argument('-rc', '--run-corrections', action='store_true', required=False,
                         help="Will exit after making all the corrections")
     parser.add_argument('-s', '--skip-media-reset', action='store_true', required=False,
@@ -394,7 +404,7 @@ if __name__ == "__main__":
     parser.add_argument('-x', '--keep-running', action='store_true', required=False,
                         help="Runs the script as a service")
     parser.add_argument('-v', '--version', action='version',
-                    version='Debrid Media Organizer 2.0.2', help="Show program's version number and exit.")
+                    version='Debrid Media Organizer 2.0.3', help="Show program's version number and exit.")
     args = parser.parse_args()
 
     downloads = sort_downloads(get_downloads())
