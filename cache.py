@@ -1,3 +1,4 @@
+from pathlib import Path
 import sqlite3
 from sqlite3 import Error
 from utils import Correction
@@ -16,7 +17,9 @@ class Cache():
     logger = None
 
     def __init__(self, logger = None) -> None:
-        self.create_connection(r".\cache\managed_list.db")
+        db_file_path = Path(r".\cache\managed_list.db")
+        db_file_path.parent.mkdir(parents=True, exist_ok=True)
+        self.create_connection(db_file_path)
         self.create_table()
         self.logger = logger
 
