@@ -61,7 +61,7 @@ class Cache():
             self.__log_error(e)
             return None
 
-    def get_torrent_id(self, hash):
+    def get_torrent_id(self, hash: str):
         try:
             c = self.conn.cursor()
             c.execute("SELECT id FROM torrents WHERE hash=?", (hash,))
@@ -70,6 +70,18 @@ class Cache():
                 return result[0]
             else:
                 return None
+        except Error as e:
+            self.__log_error(e)
+            return None
+        
+    def get_torrent_media_type(self, hash: str):
+        try:
+            c = self.conn.cursor()
+            c.execute("SELECT type FROM list WHERE torrent_id=(SELECT id FROM torrents WHERE hash=?)", (hash,))
+            result = c.fetchone()
+            if not result:
+                return None
+            return result[0]
         except Error as e:
             self.__log_error(e)
             return None

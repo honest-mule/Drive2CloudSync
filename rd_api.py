@@ -99,8 +99,24 @@ def check_torrent_health(torrent_id):
         except:
             return False
     return True
+
+def read_initial_bytes(url, n = 512 * 1024):
+    try:
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+
+        bytes_read = 0
+        while bytes_read < n:
+            chunk_size = min(1024, n - bytes_read)
+            chunk = response.raw.read(chunk_size)
+            if not chunk:
+                break
+            bytes_read += len(chunk)
+        return True
+    except:
+        return False
         
 def reinstate_torrent(hash):
     pass
 
-__all__ = ["get_torrents", "get_downloads", "get_torrent_info", "get_resource", "get_direct_link"]
+__all__ = ["get_torrents", "get_downloads", "get_torrent_info", "get_resource", "get_direct_link", "read_initial_bytes"]

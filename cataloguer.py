@@ -38,6 +38,7 @@ logger.addHandler(file_handler)
 
 # --- LOGGING SETUP END --- #
 
+touch_file = True
 cache = Cache(logger)
 movie_scraper = TMDBMovieScraper(None, None, None)
 
@@ -107,6 +108,8 @@ def movies(torrent, tmdb_info = None):
         else:
             direct_link = get_direct_link(file_uri)
             logger.info(f"Direct link generated:\n\tTorrent: {torrent_info['filename']}\n\tPath: {file_info['path']}\n\tLink: {direct_link}")
+        if touch_file:
+            read_initial_bytes(direct_link)
         if(direct_link.endswith(".rar")):
             logger.warning(f"RD sent .rar for {torrent_info['filename']}{file_info['path']}")
             continue
@@ -194,6 +197,8 @@ def shows(torrent, tmdb_info = None):
         else:
             direct_link = get_direct_link(file_uri)
             logger.info(f"Direct link generated:\n\tTorrent: {torrent_info['filename']}\n\tPath: {file_info['path']}\n\tLink: {direct_link}")
+        if touch_file:
+            read_initial_bytes(direct_link)
         if(direct_link.endswith(".rar")):
             logger.warning(f"RD sent .rar for {torrent_info['filename']}{file_info['path']}")
             continue
@@ -313,10 +318,11 @@ def is_expired(json_date):
 def sort_downloads(downloads = [], _dict = {}):
     for download_info in downloads:
         _dict[download_info["link"]] = download_info
-    return [_dict[link] for link in _dict if not is_expired(_dict[link]["generated"])]
+
+    return {link: download_info for link, download_info in _dict.items() if not is_expired(_dict[link]["generated"])}
 
 def resolve_media_type(folder_name):
-    tv_regex = re.compile(r"[\W](S[0-9]{2}|SEASON|COMPLETE|[^457a-z\W\s]-[0-9]+)", re.RegexFlag.IGNORECASE)
+    tv_regex = re.compile(r"[\W](S[0-9]{2}|SEASON|COMPLETE(?!\WBLURAY\W)|[^457a-z\W\s]-[0-9]+)", re.RegexFlag.IGNORECASE)
     movie_regex = re.compile(r"(19|20)([0-9]{2} ?\.?)")
     if tv_regex.search(folder_name):
         return "tv"
@@ -335,7 +341,9 @@ def sort_torrents(torrents, downloads, _dict = {}):
             if link not in downloads:
                 continue
             torrent["direct_links"][link] = downloads[link]
-        torrent["type"] = resolve_media_type(torrent["filename"])
+        torrent["type"] = cache.get_torrent_media_type(torrent["hash"])
+        if not torrent["type"]:
+            torrent["type"] = resolve_media_type(torrent["filename"])
         _dict[hash] = torrent
 
     return _dict
@@ -348,8 +356,8 @@ def error_string(ex: Exception) -> str:
     ])
     
 def try_folder_resolution(type, torrent):
-    if not torrents:
-        logger.error("Empty torrents list. Check internet connection or RD API key.")
+    if not torrent:
+        logger.error("Empty torrent data. Check internet connection or RD API key.")
         return
     try:
         if type == 'movie':
@@ -396,7 +404,7 @@ seconds_passed = 0
 SECONDS_IN_A_DAY = 24 * 60 * 60
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Debrid Media Organizer v2.0.3")
+    parser = argparse.ArgumentParser(description="Debrid Media Organizer v2.0.4")
     parser.add_argument('-rc', '--run-corrections', action='store_true', required=False,
                         help="Will exit after making all the corrections")
     parser.add_argument('-s', '--skip-media-reset', action='store_true', required=False,
@@ -404,7 +412,7 @@ if __name__ == "__main__":
     parser.add_argument('-x', '--keep-running', action='store_true', required=False,
                         help="Runs the script as a service")
     parser.add_argument('-v', '--version', action='version',
-                    version='Debrid Media Organizer 2.0.3', help="Show program's version number and exit.")
+                    version='Debrid Media Organizer 2.0.4', help="Show program's version number and exit.")
     args = parser.parse_args()
 
     downloads = sort_downloads(get_downloads())
@@ -429,10 +437,9 @@ if __name__ == "__main__":
     if not args.skip_media_reset:
         for hash in torrents:
             try_folder_resolution(torrents[hash]["type"], torrents[hash])
-        
-    if args.keep_running:
-        sleep(5 * 60)
-        seconds_passed = 5 * 60
+        if args.keep_running:
+            sleep(5 * 60)
+            seconds_passed = 5 * 60
 
     while args.keep_running:
 
